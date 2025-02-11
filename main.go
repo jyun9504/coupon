@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -103,4 +104,8 @@ func main() {
 		db.Create(&coupons)
 		
 	}
+
+	// 初始化 gin 框架
+	r := gin.Default()
+	r.Run(":8081")
 }
