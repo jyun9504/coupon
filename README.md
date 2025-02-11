@@ -28,13 +28,13 @@
 | remaining     | INT                         | 剩餘數量        |
 | expires_at    | DATETIME                    | 到期時間        |
 
-### customers_coupons（用戶優惠券表）
+### customer_coupons（用戶優惠券表）
 
 | 欄位         | 類型       | 描述             |
 |--------------|-----------|------------------|
 | id           | UUID (PK) | 資料唯一識別碼    |
-| customers_id | UUID (FK) | 客戶 ID          |
-| coupon_id    | UUID (FK) | 優惠 ID          |
+| customer_id  | UUID (FK) | 客戶唯一識別碼    |
+| coupon_id    | UUID (FK) | 優惠券唯一識別碼  |
 | used         | BOOLEAN   | 是否已使用       |
 | claimed_at   | DATETIME  | 領取時間         |
 | used_at      | DATETIME  | 使用時間         |

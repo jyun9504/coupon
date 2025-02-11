@@ -3,10 +3,63 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
+
+// 客戶 Struct
+type Customers struct {
+	ID   string `gorm:"type:char(36);primaryKey"` // MySQL UUID 要使用 CHAR(36)
+	Name string `gorm:"type:varchar(20);unique;not null"`
+}
+
+// 優惠券 Struct
+type Coupon struct {
+	ID            string    `gorm:"type:char(36);primaryKey"`
+	Name          string    `gorm:"type:varchar(100);unique;not null"`
+	DiscountType  string    `gorm:"type:enum('price', 'percentage');not null"`
+	DiscountValue float64   `gorm:"type:decimal(10,2);not null"`
+	TotalIssued   int       `gorm:"not null"`
+	Remaining     int       `gorm:"not null"`
+	ExpiresAt     time.Time `gorm:"not null"`
+}
+
+// 客戶擁有優惠券 Struct
+type CustomerCoupon struct {
+	ID         string     `gorm:"type:char(36);primaryKey"`
+	CustomerID string     `gorm:"type:char(36);not null"`
+	CouponID   string     `gorm:"type:char(36);not null"`
+	Used       bool       `gorm:"not null;default:false"`
+	ClaimedAt  time.Time  `gorm:"not null"`
+	UsedAt     *time.Time `gorm:"default:null"`
+
+	// 關聯
+	Customers Customers `gorm:"foreignKey:CustomerID;references:ID"`
+	Coupon   Coupon   `gorm:"foreignKey:CouponID;references:ID"`
+}
+
+// 生成 UUID
+func (customer *Customers) BeforeCreate(tx *gorm.DB) (err error) {
+	customer.ID = uuid.New().String()
+	return
+}
+
+func (coupon *Coupon) BeforeCreate(tx *gorm.DB) (err error) {
+	coupon.ID = uuid.New().String()
+	return
+}
+
+func (customerCoupon *CustomerCoupon) BeforeCreate(tx *gorm.DB) (err error) {
+	customerCoupon.ID = uuid.New().String()
+	return
+}
+
+func (CustomerCoupon) TableName() string {
+	return "customer_coupons"
+}
 
 // init 變數
 var db *gorm.DB
@@ -24,5 +77,10 @@ func main() {
 	}
 
 	// Check DB connection
-	fmt.Println("DB connection Success!")
+	fmt.Println("DB connection success!")
+
+	// 遷移資料表 Schema
+	db.AutoMigrate(&Customers{}, &Coupon{}, &CustomerCoupon{})
+
+	fmt.Println("DB migrate success!")
 }
