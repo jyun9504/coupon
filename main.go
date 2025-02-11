@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -25,7 +26,7 @@ type Coupon struct {
 	DiscountValue float64   `gorm:"type:decimal(10,2);not null"`
 	TotalIssued   int       `gorm:"not null"`
 	Remaining     int       `gorm:"not null"`
-	ExpiresAt     time.Time `gorm:"not null"`
+	ExpiresAt     time.Time `gorm:"type:datetime;not null"`
 }
 
 // 客戶擁有優惠券 Struct
@@ -71,7 +72,7 @@ func main() {
 
 	var err error
 	// init mysql 連線
-	dsn := "root:password@tcp(127.0.0.1:3306)/coupon_db"
+	dsn := "root:password@tcp(127.0.0.1:3306)/coupon_db?parseTime=true"
 	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Database connection failed: ", err)
@@ -107,5 +108,26 @@ func main() {
 
 	// 初始化 gin 框架
 	r := gin.Default()
+
+	// API
+	r.GET("/customers", GetCustomers)
+	r.GET("/coupons", GetCoupons)
+
 	r.Run(":8081")
+}
+
+// 取得所有顧客列表
+func GetCustomers(c *gin.Context) {
+	var customers []Customers
+	db.Find(&customers)
+
+	c.JSON(http.StatusOK, customers)
+}
+
+// 取得所有優惠券列表
+func GetCoupons(c *gin.Context) {
+	var coupons []Coupon
+	db.Find(&coupons)
+
+	c.JSON(http.StatusOK, coupons)
 }
