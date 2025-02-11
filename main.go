@@ -111,7 +111,8 @@ func main() {
 
 	// API
 	r.GET("/customers", GetCustomers)
-	r.GET("/coupons", GetCoupons)
+	r.GET("/coupon/coupons", GetCoupons)
+	r.POST("/coupon/claim", ClaimCoupon)
 
 	r.Run(":8081")
 }
@@ -130,4 +131,24 @@ func GetCoupons(c *gin.Context) {
 	db.Find(&coupons)
 
 	c.JSON(http.StatusOK, coupons)
+}
+
+// 領取優惠券 API
+func ClaimCoupon(c *gin.Context) {
+	// Requset 參數
+	type ClaimReq struct {
+		CustomerID string `json:"customer_id"`
+		CouponID string `json:"coupon_id"`
+	}
+	//檢查傳入參數是否格是正確，不正確就回傳 http 400 Error
+	var req ClaimReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	// 必填參數檢查
+	if req.CustomerID == "" || req.CouponID == ""{
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
 }
