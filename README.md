@@ -11,10 +11,10 @@
 
 ### customers（用戶表）
 
-| 欄位  | 類型        | 描述    |
-|------|-------------|---------|
-| id   | UUID (PK)   | 用戶 ID |
-| name | VARCHAR(20) | 用戶名稱|
+| 欄位  | 類型        | 描述          |
+|------|-------------|---------------|
+| id   | UUID (PK)   | 客戶唯一識別碼 |
+| name | VARCHAR(20) | 客戶名稱       |
 
 ### coupons（優惠券表）
 
@@ -30,11 +30,11 @@
 
 ### customers_coupons（用戶優惠券表）
 
-| 欄位         | 類型       | 描述       |
-|--------------|-----------|------------|
-| id           | UUID (PK) | 記錄 ID    |
-| customers_id | UUID (FK) | 用戶 ID    |
-| coupon_id    | UUID (FK) | 優惠券 ID  |
-| used         | BOOLEAN   | 是否已使用 |
-| claimed_at   | DATETIME  | 領取時間   |
-| used_at      | DATETIME  | 使用時間   |
+| 欄位         | 類型       | 描述             |
+|--------------|-----------|------------------|
+| id           | UUID (PK) | 資料唯一識別碼    |
+| customers_id | UUID (FK) | 客戶 ID          |
+| coupon_id    | UUID (FK) | 優惠 ID          |
+| used         | BOOLEAN   | 是否已使用       |
+| claimed_at   | DATETIME  | 領取時間         |
+| used_at      | DATETIME  | 使用時間         |
