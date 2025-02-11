@@ -83,4 +83,23 @@ func main() {
 	db.AutoMigrate(&Customers{}, &Coupon{}, &CustomerCoupon{})
 
 	fmt.Println("DB migrate success!")
+
+	// 測試用初始資料
+	db.Model(&Customers{}).Count(&count)
+	if count == 0 {
+		// insert 測試客戶資料
+		users := []User{
+			{Name: "王小龜"},
+			{Name: "周星星"},
+		}
+		db.Create(&users)
+
+		// insert 優惠券資料
+		coupons := []Coupon{
+			{Name: "25% Discount", Type: "percentage", DiscountValue: 25, TotalIssued: 5, Remaining: 5, ExpiresAt: time.Now().AddDate(0, 1, 0)},
+			{Name: "NT$500 Cashback", Type: "price", DiscountValue: 500, TotalIssued: 5, Remaining: 5, ExpiresAt: time.Now().AddDate(0, 1, 0)},
+		}
+		db.Create(&coupons)
+		
+	}
 }
