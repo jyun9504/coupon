@@ -85,10 +85,11 @@ func main() {
 	fmt.Println("DB migrate success!")
 
 	// 測試用初始資料
+	var count int64
 	db.Model(&Customers{}).Count(&count)
 	if count == 0 {
 		// insert 測試客戶資料
-		users := []User{
+		users := []Customers{
 			{Name: "王小龜"},
 			{Name: "周星星"},
 		}
@@ -96,8 +97,8 @@ func main() {
 
 		// insert 優惠券資料
 		coupons := []Coupon{
-			{Name: "25% Discount", Type: "percentage", DiscountValue: 25, TotalIssued: 5, Remaining: 5, ExpiresAt: time.Now().AddDate(0, 1, 0)},
-			{Name: "NT$500 Cashback", Type: "price", DiscountValue: 500, TotalIssued: 5, Remaining: 5, ExpiresAt: time.Now().AddDate(0, 1, 0)},
+			{Name: "25% Discount", DiscountType: "percentage", DiscountValue: 25.00, TotalIssued: 5, Remaining: 5, ExpiresAt: time.Now().AddDate(0, 1, 0)},
+			{Name: "NT$500 Cashback", DiscountType: "price", DiscountValue: 500.00, TotalIssued: 5, Remaining: 5, ExpiresAt: time.Now().AddDate(0, 1, 0)},
 		}
 		db.Create(&coupons)
 		
