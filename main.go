@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/go-redis/redis/v8"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -65,6 +66,7 @@ func (CustomerCoupon) TableName() string {
 
 // init 變數
 var db *gorm.DB
+var rdb *redis.Client
 
 func main() {
 	// START POINT
@@ -106,6 +108,14 @@ func main() {
 		
 	}
 
+	// 初始化 Redis
+	rdb = redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	fmt.Println("init Redis success!")
+
+
 	// 初始化 gin 框架
 	r := gin.Default()
 
@@ -120,7 +130,7 @@ func main() {
 	r.Run(":8081")
 }
 
-// 取得所有顧客列表
+// 取得所有顧客列表 API
 func GetCustomers(c *gin.Context) {
 	var customers []Customers
 	db.Find(&customers)
@@ -128,11 +138,24 @@ func GetCustomers(c *gin.Context) {
 	c.JSON(http.StatusOK, customers)
 }
 
-// 取得所有優惠券列表
+// 取得所有優惠券列表 API
 func GetCoupons(c *gin.Context) {
 	var coupons []Coupon
 	db.Find(&coupons)
 
+	c.JSON(http.StatusOK, coupons)
+}
+
+// 查詢用戶優惠券 API
+func GetCustomerCoupons(c *gin.Context) {
+	// 取得 param 參數
+	customerID := c.Param("customer_id")
+
+	// 查詢 DB customer_id == customerID，修正關聯空資料的問題
+	var coupons []CustomerCoupon
+	db.Preload("Customers").Preload("Coupon").Where("customer_id = ?", customerID).Find(&coupons)
+
+	// Response
 	c.JSON(http.StatusOK, coupons)
 }
 
@@ -174,19 +197,7 @@ func ClaimCoupon(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "恭喜您，成功領取優惠券"})
 }
 
-// 查詢用戶優惠券
-func GetCustomerCoupons(c *gin.Context) {
-	// 取得 param 參數
-	customerID := c.Param("customer_id")
-
-	// 查詢 DB customer_id == customerID，修正關聯空資料的問題
-	var coupons []CustomerCoupon
-	db.Preload("Customers").Preload("Coupon").Where("customer_id = ?", customerID).Find(&coupons)
-
-	// Response
-	c.JSON(http.StatusOK, coupons)
-}
-
+// 使用優惠券 API
 func UseCoupon(c *gin.Context) {
 	// Requset 參數
 	type UseReq struct {
