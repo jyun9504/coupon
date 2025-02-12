@@ -220,4 +220,7 @@ func UseCoupon(c *gin.Context) {
 		"used":   true,
 		"used_at": now,
 	})
+
+	// Response 使用成功，回傳 http 200 Success
+	c.JSON(http.StatusOK, gin.H{"message": "成功使用優惠券"})
 }
