@@ -17,5 +17,22 @@ services:
     restart: always
     ports:
       - "6379:6379"
+  app:
+    build: .
+    container_name: go_coupon_app
+    restart: always
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: coupon_db
+      DB_PORT: 3306
+      RDB_HOST: redis
+      RDB_PORT: 6379
+    ports:
+      - "8081:8081"
 volumes:
   mysql_data:

@@ -6,6 +6,7 @@ import (
 	"time"
 	"net/http"
 	"context"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -65,6 +66,14 @@ func (CustomerCoupon) TableName() string {
 	return "customer_coupons"
 }
 
+// 取得環境變數
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
+
 // init 變數
 var db *gorm.DB
 var rdb *redis.Client
@@ -74,9 +83,19 @@ func main() {
 	// START POINT
 	fmt.Println("Start!")
 
+	// 取得環境變數
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbUser := getEnv("DB_USER", "root")
+	dbPassword := getEnv("DB_PASSWORD", "password")
+	dbName := getEnv("DB_NAME", "coupon_db")
+	dbPort := getEnv("DB_PORT", "3306")
+	rdbHost := getEnv("RDB_HOST", "localhost")
+	rdbPort := getEnv("RDB_PORT", "6379")
+
 	var err error
 	// init mysql 連線
-	dsn := "root:password@tcp(127.0.0.1:3306)/coupon_db?parseTime=true"
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
+		dbUser, dbPassword, dbHost, dbPort, dbName)
 	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Database connection failed: ", err)
@@ -112,7 +131,7 @@ func main() {
 
 	// 初始化 Redis
 	rdb = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: fmt.Sprintf("%s:%s", rdbHost, rdbPort),
 	})
 
 	fmt.Println("init Redis success!")
