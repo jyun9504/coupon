@@ -213,4 +213,11 @@ func UseCoupon(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "您輸入的優惠券不可使用，請檢查是否已過期或已使用"})
 		return
 	}
+
+	// 使用前先更新使用狀態，紀錄使用時間
+	now := time.Now()
+	db.Model(&CustomerCoupon{}).Where("id = ?", customerCoupon.ID).Updates(map[string]interface{}{
+		"used":   true,
+		"used_at": now,
+	})
 }
