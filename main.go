@@ -201,6 +201,15 @@ func ClaimCoupon(c *gin.Context) {
 		return
 	}
 
+	// 限制同一個優惠券只能領取一張，檢查客戶是否已領取該優惠券
+	var exists int64
+	db.Model(&CustomerCoupon{}).Where("customer_id = ? AND coupon_id = ?", req.CustomerID, req.CouponID).Count(&exists)
+	if exists > 0 {
+		logAction("領取優惠券失敗 - 已領取過該優惠券", &req.CustomerID)
+		c.JSON(http.StatusConflict, gin.H{"error": "您已領取過該優惠券，無法重複領取"})
+		return
+	}
+
 	// 建立 Redis 鎖，防止併發超發問題
 	lockKey := fmt.Sprintf("lock_%d", req.CouponID)
 	if !doLock(lockKey) {
