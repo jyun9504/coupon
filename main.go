@@ -110,9 +110,11 @@ func main() {
 	r := gin.Default()
 
 	// API
-	r.GET("/customers", GetCustomers)
+	r.GET("/customer/customers", GetCustomers)
 	r.GET("/coupon/coupons", GetCoupons)
+	r.GET("/customer/:customer_id/coupons", GetCustomerCoupons)
 	r.POST("/coupon/claim", ClaimCoupon)
+	
 
 	r.Run(":8081")
 }
@@ -144,12 +146,12 @@ func ClaimCoupon(c *gin.Context) {
 	// 檢查傳入參數是否格是正確，不正確就回傳 http 400 Error
 	var req ClaimReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入格式不正確"})
 		return
 	}
 	// 必填參數檢查
 	if req.CustomerID == "" || req.CouponID == ""{
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入參數不能為空"})
 		return
 	}
 
@@ -167,6 +169,19 @@ func ClaimCoupon(c *gin.Context) {
 	customerCoupon := CustomerCoupon{CustomerID: req.CustomerID, CouponID: req.CouponID, ClaimedAt: time.Now()}
 	db.Create(&customerCoupon)
 
-	// Response 領取成功
+	// Response 領取成功，回傳 http 200 Success
 	c.JSON(http.StatusOK, gin.H{"message": "恭喜您，成功領取優惠券"})
+}
+
+// 查詢用戶優惠券
+func GetCustomerCoupons(c *gin.Context) {
+	// 取得 param 參數
+	customerID := c.Param("customer_id")
+
+	// 查詢 DB customer_id == customerID
+	var coupons []CustomerCoupon
+	db.Where("customer_id = ?", customerID).Find(&coupons)
+
+	// Response
+	c.JSON(http.StatusOK, coupons)
 }
