@@ -178,9 +178,9 @@ func GetCustomerCoupons(c *gin.Context) {
 	// 取得 param 參數
 	customerID := c.Param("customer_id")
 
-	// 查詢 DB customer_id == customerID
+	// 查詢 DB customer_id == customerID，修正關聯空資料的問題
 	var coupons []CustomerCoupon
-	db.Where("customer_id = ?", customerID).Find(&coupons)
+	db.Preload("Customers").Preload("Coupon").Where("customer_id = ?", customerID).Find(&coupons)
 
 	// Response
 	c.JSON(http.StatusOK, coupons)
