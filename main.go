@@ -80,8 +80,7 @@ var rdb *redis.Client
 var ctx = context.Background()
 
 func main() {
-	// START POINT
-	fmt.Println("Start!")
+	fmt.Println("1-開始運行")
 
 	// 取得環境變數
 	dbHost := getEnv("DB_HOST", "localhost")
@@ -102,12 +101,11 @@ func main() {
 	}
 
 	// Check DB connection
-	fmt.Println("DB connection success!")
+	fmt.Println("2-DB 連線成功")
 
 	// 遷移資料表 Schema
 	db.AutoMigrate(&Customers{}, &Coupon{}, &CustomerCoupon{})
-
-	fmt.Println("DB migrate success!")
+	fmt.Println("3-遷移資料表 Schema 成功")
 
 	// 測試用初始資料
 	var count int64
@@ -126,7 +124,7 @@ func main() {
 			{Name: "NT$500 Cashback", DiscountType: "price", DiscountValue: 500.00, TotalIssued: 5, Remaining: 5, ExpiresAt: time.Now().AddDate(0, 1, 0)},
 		}
 		db.Create(&coupons)
-		
+		fmt.Println("*3-首次執行，注入測試資料")
 	}
 
 	// 初始化 Redis
@@ -134,7 +132,7 @@ func main() {
 		Addr: fmt.Sprintf("%s:%s", rdbHost, rdbPort),
 	})
 
-	fmt.Println("init Redis success!")
+	fmt.Println("4-Redis 初始化成功")
 
 
 	// 初始化 gin 框架
@@ -147,7 +145,6 @@ func main() {
 	r.POST("/coupon/claim", ClaimCoupon)
 	r.POST("/coupon/coupons/use", UseCoupon)
 	
-
 	r.Run(":8081")
 }
 
@@ -155,7 +152,7 @@ func main() {
 func GetCustomers(c *gin.Context) {
 	var customers []Customers
 	db.Find(&customers)
-
+	
 	c.JSON(http.StatusOK, customers)
 }
 
@@ -171,6 +168,8 @@ func GetCoupons(c *gin.Context) {
 func GetCustomerCoupons(c *gin.Context) {
 	// 取得 param 參數
 	customerID := c.Param("customer_id")
+
+	logAction("查詢用戶優惠券", &customerID)
 
 	// 查詢 DB customer_id == customerID，修正關聯空資料的問題
 	var coupons []CustomerCoupon
@@ -191,11 +190,13 @@ func ClaimCoupon(c *gin.Context) {
 	// 檢查傳入參數是否格是正確，不正確就回傳 http 400 Error
 	var req ClaimReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logAction("領取優惠券失敗 - 輸入格式不正確", &req.CustomerID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入格式不正確"})
 		return
 	}
 	// 必填參數檢查
 	if req.CustomerID == "" || req.CouponID == ""{
+		logAction("領取優惠券失敗 - 輸入參數不能為空", &req.CustomerID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入參數不能為空"})
 		return
 	}
@@ -203,6 +204,7 @@ func ClaimCoupon(c *gin.Context) {
 	// 建立 Redis 鎖，防止併發超發問題
 	lockKey := fmt.Sprintf("lock_%d", req.CouponID)
 	if !doLock(lockKey) {
+		logAction("領取優惠券失敗 - 系統忙碌中", &req.CustomerID)
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "目前優惠券系統忙碌中，請稍後重新嘗試"})
 		return
 	}
@@ -210,6 +212,7 @@ func ClaimCoupon(c *gin.Context) {
 	// 檢查優惠券剩餘數量，發完就回傳 http 404 Error
 	var coupon Coupon
 	if err := db.Where("id = ? AND remaining > 0", req.CouponID).First(&coupon).Error; err != nil {
+		logAction("領取優惠券失敗 - 優惠券已無庫存", &req.CustomerID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "優惠券已全數發放完畢，謝謝惠顧"})
 		return
 	}
@@ -223,6 +226,8 @@ func ClaimCoupon(c *gin.Context) {
 
 	// 解鎖
 	unlock(lockKey)
+
+	logAction("領取優惠券成功", &req.CustomerID)
 
 	// Response 領取成功，回傳 http 200 Success
 	c.JSON(http.StatusOK, gin.H{"message": "恭喜您，成功領取優惠券"})
@@ -239,11 +244,13 @@ func UseCoupon(c *gin.Context) {
 	// 檢查傳入參數是否格是正確，不正確就回傳 http 400 Error
 	var req UseReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logAction("使用優惠券失敗 - 輸入格式不正確", &req.CustomerID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入格式不正確"})
 		return
 	}
 	// 必填參數檢查
 	if req.CustomerID == "" || req.CouponID == ""{
+		logAction("使用優惠券失敗 - 輸入參數不能為空", &req.CustomerID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入參數不能為空"})
 		return
 	}
@@ -252,6 +259,7 @@ func UseCoupon(c *gin.Context) {
 	var customerCoupon CustomerCoupon
 	if err := db.Where("customer_id = ? AND coupon_id = ? AND used = false", req.CustomerID, req.CouponID).
 		First(&customerCoupon).Error; err != nil {
+		logAction("使用優惠券失敗 - 輸入的優惠券不可使用", &req.CustomerID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "您輸入的優惠券不可使用，請檢查是否已過期或已使用"})
 		return
 	}
@@ -262,6 +270,8 @@ func UseCoupon(c *gin.Context) {
 		"used":   true,
 		"used_at": now,
 	})
+
+	logAction("成功使用優惠券", &req.CustomerID)
 
 	// Response 使用成功，回傳 http 200 Success
 	c.JSON(http.StatusOK, gin.H{"message": "成功使用優惠券"})
@@ -276,4 +286,17 @@ func doLock(key string) bool {
 // 領取優惠券完成需要解鎖
 func unlock(key string) {
 	rdb.Del(ctx, key)
+}
+
+// 新增 LOG 紀錄操作功能
+func logAction(action string, customerID *string) {
+	// 取得當前時間（格式：YYYY-MM-DD HH:MM:SS）
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+
+	// 構造 LOG 訊息
+	if customerID != nil {
+		fmt.Printf("[%s] 操作: %s | 客戶 ID: %s\n", timestamp, action, *customerID)
+	} else {
+		fmt.Printf("[%s] 操作: %s\n", timestamp, action)
+	}
 }
