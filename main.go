@@ -205,4 +205,12 @@ func UseCoupon(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入參數不能為空"})
 		return
 	}
+
+	// 檢查客戶是否擁有有效的優惠券
+	var customerCoupon CustomerCoupon
+	if err := db.Where("customer_id = ? AND coupon_id = ? AND used = false", req.CustomerID, req.CouponID).
+		First(&customerCoupon).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "您輸入的優惠券不可使用，請檢查是否已過期或已使用"})
+		return
+	}
 }
