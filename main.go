@@ -140,6 +140,7 @@ func ClaimCoupon(c *gin.Context) {
 		CustomerID string `json:"customer_id"`
 		CouponID string `json:"coupon_id"`
 	}
+	
 	//檢查傳入參數是否格是正確，不正確就回傳 http 400 Error
 	var req ClaimReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -149,6 +150,13 @@ func ClaimCoupon(c *gin.Context) {
 	// 必填參數檢查
 	if req.CustomerID == "" || req.CouponID == ""{
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// 檢查優惠券剩餘數量，發完就回傳 http 404 Error
+	var coupon Coupon
+	if err := db.Where("id = ? AND remaining > 0", req.CouponID).First(&coupon).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "優惠券已全數發放完畢，謝謝惠顧"})
 		return
 	}
 }
