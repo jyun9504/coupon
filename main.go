@@ -114,6 +114,7 @@ func main() {
 	r.GET("/coupon/coupons", GetCoupons)
 	r.GET("/customer/:customer_id/coupons", GetCustomerCoupons)
 	r.POST("/coupon/claim", ClaimCoupon)
+	r.POST("/coupon/coupons/use", UseCoupon)
 	
 
 	r.Run(":8081")
@@ -184,4 +185,24 @@ func GetCustomerCoupons(c *gin.Context) {
 
 	// Response
 	c.JSON(http.StatusOK, coupons)
+}
+
+func UseCoupon(c *gin.Context) {
+	// Requset 參數
+	type UseReq struct {
+		CustomerID string `json:"customer_id"`
+		CouponID string `json:"coupon_id"`
+	}
+	
+	// 檢查傳入參數是否格是正確，不正確就回傳 http 400 Error
+	var req UseReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入格式不正確"})
+		return
+	}
+	// 必填參數檢查
+	if req.CustomerID == "" || req.CouponID == ""{
+		c.JSON(http.StatusBadRequest, gin.H{"error": "輸入參數不能為空"})
+		return
+	}
 }
