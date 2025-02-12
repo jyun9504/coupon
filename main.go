@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 	"net/http"
+	"context"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -67,6 +68,7 @@ func (CustomerCoupon) TableName() string {
 // init 變數
 var db *gorm.DB
 var rdb *redis.Client
+var ctx = context.Background()
 
 func main() {
 	// START POINT
@@ -179,6 +181,13 @@ func ClaimCoupon(c *gin.Context) {
 		return
 	}
 
+	// 建立 Redis 鎖，防止併發超發問題
+	lockKey := fmt.Sprintf("lock_%d", req.CouponID)
+	if !doLock(lockKey) {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "目前優惠券系統忙碌中，請稍後重新嘗試"})
+		return
+	}
+
 	// 檢查優惠券剩餘數量，發完就回傳 http 404 Error
 	var coupon Coupon
 	if err := db.Where("id = ? AND remaining > 0", req.CouponID).First(&coupon).Error; err != nil {
@@ -192,6 +201,9 @@ func ClaimCoupon(c *gin.Context) {
 	// 寫入客戶擁有的優惠券資料表
 	customerCoupon := CustomerCoupon{CustomerID: req.CustomerID, CouponID: req.CouponID, ClaimedAt: time.Now()}
 	db.Create(&customerCoupon)
+
+	// 解鎖
+	unlock(lockKey)
 
 	// Response 領取成功，回傳 http 200 Success
 	c.JSON(http.StatusOK, gin.H{"message": "恭喜您，成功領取優惠券"})
@@ -234,4 +246,15 @@ func UseCoupon(c *gin.Context) {
 
 	// Response 使用成功，回傳 http 200 Success
 	c.JSON(http.StatusOK, gin.H{"message": "成功使用優惠券"})
+}
+
+// 建立一把 Redis 鎖，五秒後會自動移除以防死鎖
+func doLock(key string) bool {
+	success, _ := rdb.SetNX(ctx, key, "locked", 5*time.Second).Result()
+	return success
+}
+
+// 領取優惠券完成需要解鎖
+func unlock(key string) {
+	rdb.Del(ctx, key)
 }
